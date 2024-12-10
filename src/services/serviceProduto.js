@@ -5,7 +5,7 @@ const imagensProduto = require('../models/imagensProduto');
 const opcoesProduto = require('../models/opcoesProduto');
 const categoriaProduto = require('../models/categoriaProduto')
 const sequelize = require('../config/conexao');
-
+//limit e categoria funcionando
 const getProduct = async (req, res) => {
     try {
         // Extrair parâmetros da query
@@ -21,23 +21,30 @@ const getProduct = async (req, res) => {
         let queryOptions = {
             include: [
                 {
-                    model: opcoesProduto,
-                    as: 'opcoesProduto'
-                },
-                {
-                    model: imagensProduto,
-                    as: 'imagensProduto',
-                    required: false
-                },
-                {
                     model: categoriaProduto,
                     as: 'categoriaProduto',
-                    attributes: ['categoria_id'] // Agora vamos trazer o 'categoria_id'
+                    attributes: ['categoria_id'] // Trazer somente o 'categoria_id'
+                },
+                {
+                    model: imagensProduto,  // Inclui a associação com a tabela de imagens
+                    as: 'imagensProduto',
+                    attributes: ['id', 'path'], // Atributos de imagens que você quer
+                    required: false  // Garante que o produto será retornado mesmo sem imagens
+                },
+                {
+                    model: opcoesProduto,  // Inclui a associação com as opções
+                    as: 'opcoesProduto',
+                    attributes: ['id', 'title', 'shape', 'radius', 'type', 'values'], // Atributos das opções
+                    required: false  // Garante que o produto será retornado mesmo sem opções
                 }
-
-                
             ]
         };
+
+        // Condicional para incluir as associações com imagens e opções
+        if (fields) {
+            // Limita os campos principais conforme o filtro 'fields'
+            queryOptions.attributes = fields.split(',').filter(field => field !== 'images'); // Remove 'images' da seleção, caso seja passado
+        }
 
         let where = {};
 
@@ -46,33 +53,30 @@ const getProduct = async (req, res) => {
         } else {
             queryOptions.limit = queryLimit;
         }
+
         // Ajuste para o filtro de categorias_id
-            // Ajuste para o filtro de categorias_id
-            if (categorias_id) {
-                let categorias_idArray = [];
-            
-                // Verifica se categorias_id é uma string ou um array
-                if (typeof categorias_id === 'string') {
-                    categorias_idArray = categorias_id.split(',').map(id => parseInt(id.trim())); //Converte os ids para números
-                } else if (Array.isArray(categorias_id)) {
-                    categorias_idArray = categorias_id.map(id => parseInt(id)); // Converte os ids para números
-                }
-            
-                // Filtro para garantir que o produto pertence a uma das categorias
-                queryOptions.include[2].where = {
-                    categoria_id: {
-                        [Op.in]: categorias_idArray // Filtra para garantir que a categoria_id corresponde aos valores fornecidos
-                    }
-                };
+        if (categorias_id) {
+            let categorias_idArray = [];
+        
+            // Verifica se categorias_id é uma string ou um array
+            if (typeof categorias_id === 'string') {
+                categorias_idArray = categorias_id.split(',').map(id => parseInt(id.trim())); // Converte os ids para números
+            } else if (Array.isArray(categorias_id)) {
+                categorias_idArray = categorias_id.map(id => parseInt(id)); // Converte os ids para números
             }
+        
+            // Filtro para garantir que o produto pertence a uma das categorias
+            queryOptions.include[0].where = {
+                categoria_id: {
+                    [Op.in]: categorias_idArray // Filtra para garantir que a categoria_id corresponde aos valores fornecidos
+                }
+            };
+        }
+
         // Calcular o offset com base na página
         const queryOffset = queryLimit ? (parseInt(page) - 1) * queryLimit : 0;
 
-        // Adicionar outros filtros como 'fields', 'category_ids', 'price_range', 'match', etc.
-        if (fields) {
-            queryOptions.attributes = fields.split(',');
-        }
-        
+        // Adicionar outros filtros como 'price_range', 'match', etc.
         if (price_range) {
             const [minPrice, maxPrice] = price_range.split('-').map(price => parseFloat(price));
             if (!isNaN(minPrice) && !isNaN(maxPrice)) {
@@ -111,32 +115,30 @@ const getProduct = async (req, res) => {
         // Formatar a resposta
         const formattedResponse = {
             data: produtos.map(produto => ({
-              id: produto.id,
-              enabled: produto.enabled,
-              name: produto.name,
-              slug: produto.slug,
-              stock: produto.stock,
-              description: produto.description,
-              price: produto.price,
-              price_with_discount: produto.price_with_discount,
-              // Verifique se existe 'categoriaProduto' antes de mapear
-              categorias_id: produto.categoriaProduto ? produto.categoriaProduto.map(categoria => categoria.categoria_id) : [], // Aqui extraímos as categorias // Se não houver categorias, retorna um array vazio
-              // Verifique se existe 'imagensProduto' antes de mapear
-              images: produto.imagensProduto ? produto.imagensProduto.map(image => ({ id: image.id, content: image.path })) : [],
-              // Verifique se existe 'opcoesProduto' antes de mapear
-              options: produto.opcoesProduto ? produto.opcoesProduto.map(option => ({
-                id: option.id,
-                title: option.title,
-                shape: option.shape,
-                radius: option.radius,
-                type: option.type,
-                values: option.values || []
-              })) : []
+                id: produto.id,
+                enabled: produto.enabled,
+                name: produto.name,
+                slug: produto.slug,
+                stock: produto.stock,
+                description: produto.description,
+                price: produto.price,
+                price_with_discount: produto.price_with_discount,
+                categorias_id: produto.categoriaProduto ? produto.categoriaProduto.map(categoria => categoria.categoria_id) : [],
+                // Verifique se existe 'imagensProduto' antes de mapear
+                images: produto.imagensProduto ? produto.imagensProduto.map(image => ({ id: image.id, content: image.path })) : [],
+                options: produto.opcoesProduto ? produto.opcoesProduto.map(option => ({
+                    id: option.id,
+                    title: option.title,
+                    shape: option.shape,
+                    radius: option.radius,
+                    type: option.type,
+                    values: option.values || []
+                })) : []
             })),
             total: produtos.length,
             limit: queryLimit,
             page: parseInt(page)
-          };
+        };
 
         return res.status(200).json(formattedResponse);
     } catch (error) {
@@ -144,6 +146,7 @@ const getProduct = async (req, res) => {
         return res.status(500).json({ message: 'Erro ao procurar produtos' });
     }
 };
+
 
 const getProductID = async (req, res) => {
     try {
@@ -201,87 +204,6 @@ const getProductID = async (req, res) => {
         return res.status(500).json({ res,message:'Nenhum produto encontrado!'});
     }
 }
-//esta funcionando para criar o produto
-// const postProduct = async (req, res) => {
-//     const { enabled, name, slug, use_in_menu, stock, description, price, price_with_discount, category_ids, images, options } = req.body;
-//     const obrigatorios = { name, slug, price, price_with_discount };
-
-//     // Verifica campos obrigatórios
-//     const camposFaltando = Object.keys(obrigatorios).filter(key => !obrigatorios[key]);
-//     if (camposFaltando.length > 0) {
-//         return res.status(500).json({ message: 'Campos obrigatórios não preenchidos' });
-//     }
-//     // Começando uma transação
-//     const t = await sequelize.transaction();
-
-//     try {
-//         // Cria o produto principal
-//         const createProduto = await tabelaProduto.create({
-//             enabled,
-//             name,
-//             slug,
-//             use_in_menu,
-//             stock,
-//             description,
-//             price,
-//             price_with_discount,
-//             category_ids: JSON.stringify(category_ids)
-//         } ,{ transaction: t } );
-        
-//         console.log('Produto criado com sucesso:', createProduto);
-
-//         // Cria as imagens relacionadas
-//         if (images && images.length > 0) {
-//             const imagensData = images.map(image => ({
-//                 product_id: createProduto.id,
-//                 path: image.content,
-//                 enabled: true
-//             }));
-//             await imagensProduto.bulkCreate(imagensData,{ transaction: t });
-//             console.log('Imagens criadas com sucesso:', imagensData);
-//         }
-
-//         // Cria as opções relacionadas
-//         if (options && options.length > 0) {
-//             const opcoesData = options.map(option => ({
-//                 produtos_id: createProduto.id,
-//                 title: option.title,
-//                 shape: option.shape,
-//                 radius: option.radius ? parseFloat(option.radius) : null,
-//                 type: option.type,
-//                 values: JSON.stringify(option.values || [])
-//             }));
-//             await opcoesProduto.bulkCreate(opcoesData, { transaction: t });
-//             console.log('Opções criadas com sucesso:', opcoesData);
-//         }
-//          // Commit da transação
-//          await t.commit();
-
-//         // return res.status(200).json({ res,message:'produto criado com sucesso'});
-//         return res.status(200).json({ message: 'Produto criado com sucesso' });;
-
-//     // } catch (error) {
-//     //     console.error('Erro ao criar produto:', error);
-//     //     return res.status(500).json({ res,message:'erro ao criar produto'});
-//     // }
-//     // }catch (error) {
-//     //     // Limpeza do erro: Remover referências circulares
-//     //     if (error instanceof Error) {
-//     //         // Se for um erro padrão, remova as propriedades circulares
-//     //         error = { message: error.message, stack: error.stack };
-//     //     }
-
-//     //     // Garantir que o erro seja simplificado antes de enviar na resposta
-//     //     console.error('Erro ao criar produto:', error);
-//     //     return res.status(500).json({ message: 'Erro ao criar produto', error: error.message });
-//     // }
-//     }catch (error) {
-//         // Rollback da transação em caso de erro
-//         await t.rollback();
-//         console.error('Erro ao criar produto:', error);
-//         return res.status(500).json({ message: 'Erro ao criar produto', error: error.message });
-//     }
-// };
 
 //crio o produto e os relacionamentos funcionam
 const postProduct = async (req, res) => {
@@ -352,22 +274,6 @@ const postProduct = async (req, res) => {
 
         // return res.status(200).json({ res,message:'produto criado com sucesso'});
         return res.status(200).json({ message: 'Produto criado com sucesso' });
-
-    // } catch (error) {
-    //     console.error('Erro ao criar produto:', error);
-    //     return res.status(500).json({ res,message:'erro ao criar produto'});
-    // }
-    // }catch (error) {
-    //     // Limpeza do erro: Remover referências circulares
-    //     if (error instanceof Error) {
-    //         // Se for um erro padrão, remova as propriedades circulares
-    //         error = { message: error.message, stack: error.stack };
-    //     }
-
-    //     // Garantir que o erro seja simplificado antes de enviar na resposta
-    //     console.error('Erro ao criar produto:', error);
-    //     return res.status(500).json({ message: 'Erro ao criar produto', error: error.message });
-    // }
     }catch (error) {
         // Rollback da transação em caso de erro
         await t.rollback();
