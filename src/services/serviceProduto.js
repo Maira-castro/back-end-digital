@@ -1,11 +1,10 @@
 const { Op } = require('sequelize'); 
-const app = require("../app");
 const tabelaProduto = require('../models/tabelaProduto'); 
 const imagensProduto = require('../models/imagensProduto');
 const opcoesProduto = require('../models/opcoesProduto');
 const categoriaProduto = require('../models/categoriaProduto')
 const sequelize = require('../config/conexao');
-//limit e categoria funcionando
+
 const getProduct = async (req, res) => {
     try {
         // Extrair parâmetros da query
@@ -373,11 +372,11 @@ const putProduct = async (req, res) => {
             console.log('Categorias associadas com sucesso');
         }
 
-        // Atualizar imagens (somente atualizar imagens existentes, não criar novas)
+        
         if (images && images.length > 0) {
             await Promise.all(images.map(async (img) => {
                 if (img.id) {
-                    // Se o ID da imagem for fornecido, apenas atualiza a imagem
+                    
                     await imagensProduto.update(
                         { enabled: img.deleted, path: img.content },
                         { where: { id: img.id }, transaction: t }
@@ -388,11 +387,11 @@ const putProduct = async (req, res) => {
             }));
         }
 
-        // Atualizar opções (somente atualizar opções existentes, não criar novas)
+        
         if (options && options.length > 0) {
             await Promise.all(options.map(async (opt) => {
                 if (opt.id) {
-                    // Se o ID da opção for fornecido, apenas atualiza a opção
+                    
                     const radius = isNaN(opt.radius) ? 0 : opt.radius;
                     await opcoesProduto.update(
                         { title: opt.title, shape: opt.shape, radius, type: opt.type, values: JSON.stringify(opt.values || []) },
@@ -426,29 +425,32 @@ const deleteProdutos = async (req, res) => {
     const id = req.params.id;
 
     if (!id) {
-       
-        return res.status(500).json({ res,message:'id nao fornecido'});
+        return res.status(400).json({ message: 'ID não fornecido' });
     }
 
     try {
-        // Código de exclusão
+        // Exclui as associações do produto em outras tabelas (relacionamentos)
+        await categoriaProduto.destroy({ where: { produtos_id: id } });
         await opcoesProduto.destroy({ where: { produtos_id: id } });
         await imagensProduto.destroy({ where: { product_id: id } });
 
-        // Finalmente, exclua o produto
-        const produto = await tabelaProduto.destroy({ where: { id: id } });
+        // Exclui o produto principal
+        const produtoDeletado = await tabelaProduto.destroy({ where: { id: id } });
 
-        if (!produto) {
-          
-            return res.status(500).json({ res,message:`Produto com o id=${id} não foi encontrado.`});
+        if (produtoDeletado === 0) {
+            // Se nenhum produto foi deletado, isso significa que o produto não foi encontrado
+            return res.status(404).json({ message: `Produto com o id=${id} não foi encontrado.` });
         }
-        return res.status(500).json( res);
-       
+
+        // Produto e suas associações foram deletados com sucesso
+        return res.status(200).json({ message: 'Produto e suas associações deletados com sucesso.' });
+
     } catch (error) {
-        
-        return res.status(500).json({ res,message:'erro na remoçao'});
+        console.error('Erro ao excluir o produto:', error);
+        return res.status(500).json({ message: 'Erro ao remover o produto e suas associações.', error: error.message });
     }
 };
+
 
 module.exports = {
     getProduct,
