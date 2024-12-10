@@ -5,128 +5,6 @@ const imagensProduto = require('../models/imagensProduto');
 const opcoesProduto = require('../models/opcoesProduto');
 const categoriaProduto = require('../models/categoriaProduto')
 const sequelize = require('../config/conexao');
-const { createCategoria } = require('./serviceCategoria');
-
-
-//o limit ta funcionando
-// const getProduct = async (req, res) => {
-//     try {
-//         // Extrair parâmetros da query
-//         const { limit = 12, page = 1, fields, match, category_ids, price_range, option = {} } = req.query;
-
-//         // Verificar se 'limit' é um número e se é maior que 0
-//         const queryLimit = parseInt(limit);
-//         if (isNaN(queryLimit) || queryLimit <= 0) {
-//             return res.status(400).json({ message: 'limit aceita apenas números maiores que 0' });
-//         }
-
-//         // Configurar opções para consulta
-//         let queryOptions = {
-//             include: [
-//                 {
-//                     model: opcoesProduto,
-//                     as: 'opcoesProduto'
-//                 },
-//                 {
-//                     model: imagensProduto,
-//                     as: 'imagensProduto',
-//                     required: false
-//                 }
-//             ]
-//         };
-
-//         let where = {};
-
-//         if (queryLimit === -1) {
-//             queryOptions.limit = null;  // Se o valor for -1, significa sem limite
-//         } else {
-//             queryOptions.limit = queryLimit;
-//         }
-
-//         // Calcular o offset com base na página
-//         const queryOffset = queryLimit ? (parseInt(page) - 1) * queryLimit : 0;
-
-//         // Adicionar outros filtros como 'fields', 'category_ids', 'price_range', 'match', etc.
-//         if (fields) {
-//             queryOptions.attributes = fields.split(',');
-//         }
-
-//         if (category_ids) {
-//             const categoryIdsArray = category_ids.split(',').map(id => parseInt(id));
-//             where.category_ids = { [Op.in]: categoryIdsArray };
-//         }
-
-//         if (price_range) {
-//             const [minPrice, maxPrice] = price_range.split('-').map(price => parseFloat(price));
-//             if (!isNaN(minPrice) && !isNaN(maxPrice)) {
-//                 where.price = { [Op.between]: [minPrice, maxPrice] };
-//             }
-//         }
-
-//         if (match) {
-//             where[Op.or] = [
-//                 { name: { [Op.like]: `%${match}%` } },
-//                 { description: { [Op.like]: `%${match}%` } },
-//             ];
-//         }
-
-//         if (Object.keys(option).length > 0) {
-//             const optionFilters = [];
-//             for (const [key, value] of Object.entries(option)) {
-//                 const valuesArray = value.split(',');
-//                 optionFilters.push({
-//                     [`options.${key}`]: { [Op.in]: valuesArray }
-//                 });
-//             }
-//             where[Op.and] = optionFilters;
-//         }
-
-//         queryOptions.where = where;
-//         queryOptions.offset = queryOffset;
-
-//         // Executar a consulta
-//         const produtos = await tabelaProduto.findAll(queryOptions);
-
-//         if (produtos.length === 0) {
-//             return res.status(404).json({ message: 'Nenhum produto encontrado!' });
-//         }
-
-//         // Formatar a resposta
-//         const formattedResponse = {
-//             data: produtos.map(produto => ({
-//                 id: produto.id,
-//                 enabled: produto.enabled,
-//                 name: produto.name,
-//                 slug: produto.slug,
-//                 stock: produto.stock,
-//                 description: produto.description,
-//                 price: produto.price,
-//                 price_with_discount: produto.price_with_discount,
-//                 category_ids: produto.category_ids,
-//                 images: produto.imagensProduto.map(image => ({
-//                     id: image.id,
-//                     content: image.path
-//                 })),
-//                 options: produto.opcoesProduto.map(option => ({
-//                     id: option.id,
-//                     title: option.title,
-//                     shape: option.shape,
-//                     radius: option.radius,
-//                     type: option.type,
-//                     values: option.values
-//                 }))
-//             })),
-//             total: produtos.length,
-//             limit: queryLimit,
-//             page: parseInt(page)
-//         };
-
-//         return res.status(200).json(formattedResponse);
-//     } catch (error) {
-//         console.error('Erro ao procurar produtos:', error);
-//         return res.status(500).json({ message: 'Erro ao procurar produtos' });
-//     }
-// };
 
 const getProduct = async (req, res) => {
     try {
@@ -138,17 +16,6 @@ const getProduct = async (req, res) => {
         if (isNaN(queryLimit) || queryLimit <= 0) {
             return res.status(400).json({ message: 'limit aceita apenas números maiores que 0' });
         }
-         // Definir categorias_idArray de forma segura
-    let categorias_idArray = [];
-    if (categorias_id) {
-      if (typeof categorias_id === 'string') {
-        // Caso categorias_id seja uma string, transformamos em array
-        categorias_idArray = categorias_id.split(',').map(id => parseInt(id, 10));
-      } else if (Array.isArray(categorias_id)) {
-        // Caso categorias_id já seja um array
-        categorias_idArray = categorias_id.map(id => parseInt(id, 10));
-      }
-    }
 
         // Configurar opções para consulta
         let queryOptions = {
@@ -165,12 +32,8 @@ const getProduct = async (req, res) => {
                 {
                     model: categoriaProduto,
                     as: 'categoriaProduto',
-                    required: true, // Garantir que a categoria seja obrigatória para o produto
-                    where: {
-                      categoria_id: { [Op.in]: categorias_idArray } // Filtrando pelas categorias
-                    },
-                    attributes: ['categoria_id']  // Garantir que estamos pegando apenas o ID da categoria
-                  }
+                    attributes: ['categoria_id'] // Agora vamos trazer o 'categoria_id'
+                }
 
                 
             ]
@@ -183,7 +46,25 @@ const getProduct = async (req, res) => {
         } else {
             queryOptions.limit = queryLimit;
         }
-
+        // Ajuste para o filtro de categorias_id
+            // Ajuste para o filtro de categorias_id
+            if (categorias_id) {
+                let categorias_idArray = [];
+            
+                // Verifica se categorias_id é uma string ou um array
+                if (typeof categorias_id === 'string') {
+                    categorias_idArray = categorias_id.split(',').map(id => parseInt(id.trim())); //Converte os ids para números
+                } else if (Array.isArray(categorias_id)) {
+                    categorias_idArray = categorias_id.map(id => parseInt(id)); // Converte os ids para números
+                }
+            
+                // Filtro para garantir que o produto pertence a uma das categorias
+                queryOptions.include[2].where = {
+                    categoria_id: {
+                        [Op.in]: categorias_idArray // Filtra para garantir que a categoria_id corresponde aos valores fornecidos
+                    }
+                };
+            }
         // Calcular o offset com base na página
         const queryOffset = queryLimit ? (parseInt(page) - 1) * queryLimit : 0;
 
@@ -191,23 +72,7 @@ const getProduct = async (req, res) => {
         if (fields) {
             queryOptions.attributes = fields.split(',');
         }
-        // Garantir que a variável de categorias_id seja definida corretamente
-    // if (categorias_id) {
-    //     let categorias_idArray = [];
-    //     if (typeof categorias_id === 'string') {
-    //       categorias_idArray = categorias_id.split(',').map(id => parseInt(id));
-    //     } else if (Array.isArray(categorias_id)) {
-    //       categorias_idArray = categorias_id.map(id => parseInt(id));
-    //     }
-  
-    //     if (categorias_idArray.length > 0) {
-    //       queryOptions.include[2].where.categoria_id = {
-    //         [Op.in]: categorias_idArray // Aplicar filtro correto na categoria
-    //       };
-    //     } else {
-    //       return res.status(400).json({ message: 'Categorias não válidas.' });
-    //     }
-    //   }
+        
         if (price_range) {
             const [minPrice, maxPrice] = price_range.split('-').map(price => parseFloat(price));
             if (!isNaN(minPrice) && !isNaN(maxPrice)) {
@@ -255,7 +120,7 @@ const getProduct = async (req, res) => {
               price: produto.price,
               price_with_discount: produto.price_with_discount,
               // Verifique se existe 'categoriaProduto' antes de mapear
-              categorias_id: produto.categoriaProduto.map(categoria => categoria.categoria_id), // Aqui extraímos as categorias // Se não houver categorias, retorna um array vazio
+              categorias_id: produto.categoriaProduto ? produto.categoriaProduto.map(categoria => categoria.categoria_id) : [], // Aqui extraímos as categorias // Se não houver categorias, retorna um array vazio
               // Verifique se existe 'imagensProduto' antes de mapear
               images: produto.imagensProduto ? produto.imagensProduto.map(image => ({ id: image.id, content: image.path })) : [],
               // Verifique se existe 'opcoesProduto' antes de mapear
