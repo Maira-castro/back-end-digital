@@ -1,6 +1,6 @@
-const { Op } = require('sequelize');
+const { Op } = require('sequelize'); 
 const app = require("../app");
-const tabelaProduto = require('../models/tabelaProduto');
+const tabelaProduto = require('../models/tabelaProduto'); 
 const imagensProduto = require('../models/imagensProduto');
 const opcoesProduto = require('../models/opcoesProduto');
 const categoriaProduto = require('../models/categoriaProduto')
@@ -155,6 +155,11 @@ const getProductID = async (req, res) => {
         const queryOptions = {
             include: [
                 {
+                    model: categoriaProduto,
+                    as: 'categoriaProduto',
+                    attributes: ['categoria_id'] // Trazer somente o 'categoria_id'
+                },
+                {
                     model: opcoesProduto,
                     as: 'opcoesProduto'
                 },
@@ -170,7 +175,7 @@ const getProductID = async (req, res) => {
         const produto = await tabelaProduto.findByPk(id, queryOptions);
 
         if (!produto) {
-            return res.status(500).json({ res,message:'Nenhum produto encontrado!'});
+            return res.status(404).json({ message: 'Nenhum produto encontrado!' });
         }
 
         // Formatando a resposta
@@ -183,7 +188,7 @@ const getProductID = async (req, res) => {
             description: produto.description,
             price: produto.price,
             price_with_discount: produto.price_with_discount,
-            category_ids: produto.category_ids,
+            categorias_id: produto.categoriaProduto ? produto.categoriaProduto.map(categoria => categoria.categoria_id) : [],
             images: produto.imagensProduto.map(image => ({
                 id: image.id,
                 content: image.path
@@ -198,12 +203,15 @@ const getProductID = async (req, res) => {
             }))
         };
 
-        return res.status(200).json( res,formattedResponse);
+        // Enviar a resposta com o objeto formatado
+        return res.status(200).json(formattedResponse);
 
     } catch (error) {
-        return res.status(500).json({ res,message:'Nenhum produto encontrado!'});
+        console.error(error);
+        return res.status(500).json({ message: 'Erro ao procurar produto!' });
     }
-}
+};
+
 
 //crio o produto e os relacionamentos funcionam
 const postProduct = async (req, res) => {
