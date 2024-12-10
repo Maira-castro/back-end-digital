@@ -292,74 +292,135 @@ const postProduct = async (req, res) => {
 
 const putProduct = async (req, res) => {
     const id = req.params.id;
-    const { enabled, name, slug, use_in_menu, stock, description, price, price_with_discount, category_ids, images, options } = req.body;
+    const { enabled, name, slug, use_in_menu, stock, description, price, price_with_discount, categorias_id, images, options } = req.body;
 
-    // Verifica se pelo menos um campo foi preenchido
-    if (!enabled && !name && !slug && !use_in_menu && !stock && !description && !price && !price_with_discount && !category_ids && !images && !options) {
-        return res.status(500).json({ res,message:'necessario atualizar um intme'});
+    // Verifica se pelo menos um campo foi preenchido para atualização
+    if (!enabled && !name && !slug && !use_in_menu && !stock && !description && !price && !price_with_discount && !categorias_id && !images && !options) {
+        return res.status(400).json({ message: 'É necessário atualizar ao menos um item' });
     }
 
+    // Iniciando uma transação
+    const t = await sequelize.transaction();
+
     try {
-        const usuario = await tabelaProduto.findByPk(id)
-        if(!usuario) return res.status(500).json({ res,message:'produto nao encontrado'});
+        // Verifica se o produto existe
+        const produto = await tabelaProduto.findByPk(id);
+        if (!produto) {
+            return res.status(404).json({ message: 'Produto não encontrado' });
+        }
 
+        // Verifica se algum dado foi alterado
+        let produtoAtualizado = false;
+        const camposParaAtualizar = {};
 
-        await tabelaProduto.update(
-            {
-                enabled,
-                name,
-                slug,
-                use_in_menu,
-                stock,
-                description,
-                price,
-                price_with_discount
-            },
-            { where: { id: id } }
-        );
+        // Comparar cada campo e verificar se houve mudança
+        if (enabled !== undefined && enabled !== produto.enabled) {
+            camposParaAtualizar.enabled = enabled;
+            produtoAtualizado = true;
+        }
+        if (name && name !== produto.name) {
+            camposParaAtualizar.name = name;
+            produtoAtualizado = true;
+        }
+        if (slug && slug !== produto.slug) {
+            camposParaAtualizar.slug = slug;
+            produtoAtualizado = true;
+        }
+        if (use_in_menu !== undefined && use_in_menu !== produto.use_in_menu) {
+            camposParaAtualizar.use_in_menu = use_in_menu;
+            produtoAtualizado = true;
+        }
+        if (stock !== undefined && stock !== produto.stock) {
+            camposParaAtualizar.stock = stock;
+            produtoAtualizado = true;
+        }
+        if (description && description !== produto.description) {
+            camposParaAtualizar.description = description;
+            produtoAtualizado = true;
+        }
+        if (price !== undefined && price !== produto.price) {
+            camposParaAtualizar.price = price;
+            produtoAtualizado = true;
+        }
+        if (price_with_discount !== undefined && price_with_discount !== produto.price_with_discount) {
+            camposParaAtualizar.price_with_discount = price_with_discount;
+            produtoAtualizado = true;
+        }
 
+        // Se algum campo foi alterado, atualiza o produto
+        if (produtoAtualizado) {
+            await tabelaProduto.update(camposParaAtualizar, {
+                where: { id },
+                transaction: t
+            });
+            console.log('Produto atualizado com sucesso');
+        } else {
+            console.log('Nenhuma alteração encontrada no produto');
+            return res.status(200).json({ message: 'Nenhuma alteração encontrada no produto' });
+        }
+
+        // Atualizar categorias
+        if (categorias_id && categorias_id.length > 0) {
+            // Primeiro, deleta as categorias antigas associadas ao produto
+            await categoriaProduto.destroy({ where: { produtos_id: id }, transaction: t });
+
+            // Agora, insere as novas categorias
+            const categoriasData = categorias_id.map(categoria => ({
+                produtos_id: id,
+                categoria_id: categoria
+            }));
+            await categoriaProduto.bulkCreate(categoriasData, { transaction: t });
+            console.log('Categorias associadas com sucesso');
+        }
+
+        // Atualizar imagens (somente atualizar imagens existentes, não criar novas)
         if (images && images.length > 0) {
             await Promise.all(images.map(async (img) => {
                 if (img.id) {
+                    // Se o ID da imagem for fornecido, apenas atualiza a imagem
                     await imagensProduto.update(
-                        {
-                            enabled: img.deleted,
-                            path: img.content
-                        },
-                        { where: { id: img.id } }
+                        { enabled: img.deleted, path: img.content },
+                        { where: { id: img.id }, transaction: t }
                     );
                 } else {
-                    console.log('ID da imagem não fornecido:', img);
+                    console.log('ID da imagem não fornecido, nenhuma nova imagem será criada');
                 }
             }));
         }
 
+        // Atualizar opções (somente atualizar opções existentes, não criar novas)
         if (options && options.length > 0) {
             await Promise.all(options.map(async (opt) => {
                 if (opt.id) {
+                    // Se o ID da opção for fornecido, apenas atualiza a opção
                     const radius = isNaN(opt.radius) ? 0 : opt.radius;
                     await opcoesProduto.update(
-                        {
-                            title: opt.title,
-                            shape: opt.shape,
-                            radius: radius,
-                            type: opt.type,
-                            values: opt.values
-                        },
-                        { where: { id: opt.id } }
+                        { title: opt.title, shape: opt.shape, radius, type: opt.type, values: JSON.stringify(opt.values || []) },
+                        { where: { id: opt.id }, transaction: t }
                     );
                 } else {
-                    console.log('ID da opção não fornecido:', opt);
+                    console.log('ID da opção não fornecido, nenhuma nova opção será criada');
                 }
             }));
         }
 
-        return res.status(200).json({ res,message:'produto atualizado com sucesso'});
+        // Commit da transação
+        await t.commit();
+
+        return res.status(200).json({ message: 'Produto atualizado com sucesso' });
+
     } catch (error) {
-        
-        return res.status(500).json({ res,message:'erro'});
+        // Rollback da transação em caso de erro
+        await t.rollback();
+        console.error('Erro ao atualizar produto:', error);
+        return res.status(500).json({ message: 'Erro ao atualizar produto', error: error.message });
     }
 };
+
+
+
+
+
 
 const deleteProdutos = async (req, res) => {
     const id = req.params.id;
