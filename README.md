@@ -44,11 +44,11 @@ Para rodar o projeto localmente, siga os passos abaixo:
 3. Configure as variáveis de ambiente:
     Crie um arquivo `.env` na raiz do projeto e defina as seguintes variáveis:
     ```
-DB_NAME=sua_db_name
-DB_HOST=seu_host
-DB_USER=seu_user
-DB_PASS=seu_pass
-KEY_TOKEN=sua_chave
+    DB_NAME=sua_db_name
+    DB_HOST=seu_host
+    DB_USER=seu_user
+   DB_PASS=seu_pass
+   KEY_TOKEN=sua_chave
     ```
 
 4. Inicie o servidor:
