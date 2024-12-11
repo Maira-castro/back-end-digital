@@ -4,5 +4,5 @@ const authenticate = require('../middleware/authMiddleware')
 const categoriaRoutes = express.Router()
 
 categoriaRoutes.post('/',authenticate,controllerCategoria.createCategoria);
-
+categoriaRoutes.get('/search', controllerCategoria.getCategoria);
 module.exports = categoriaRoutes;

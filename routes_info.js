@@ -33,7 +33,7 @@
 
 
 }*/
-//----------------produto--------------------
+//----------------PRODUTO--------------------
 //rota:CADASTRAR PRODUTO
 //metodo: POST
 //URL: http://localhost:3000/v1/produtos
@@ -63,15 +63,24 @@
   ]
 }*/
 
-//rota:
-//metodo:
-//url:
-/*json/no body:
-
+//rota:PESQUISAR PRODUTO PELO ID
+//metodo:GET
+//url:http://localhost:3000/v1/produtos/1
+/*no body:
 */
 
 //rota:PESQUISAR PRODUTO
-//metodo:get
+//metodo:GET
 //url:http://localhost:3000/v1/produtos/search?limit=3
 /*no body
+*/
+//rota:ATUALIZAR PRODUTO
+//metodo:PUT
+//url:http://localhost:3000/v1/produtos/16
+/*JSON:(as informações que deseja atualizar)
+*/
+//rota:DELETAR PRODUTO
+//metodo:DELETE
+//url:http://localhost:3000/v1/produtos/16
+/*no body:
 */
