@@ -10,13 +10,13 @@ const login = async(req,res) => {
         const usuario = await tabelaUsuario.findOne({where:{email:email}, attributes:['id','firstname','surname','email','password']})
 
         if(!usuario){
-             return res.status(401).json({ message:'email invalido'});
+             return res.status(400).json({ message:'email invalido'});
         }
 
         const passwordC = await bcrypt.compare(password, usuario.dataValues.password)
 
         if(!passwordC){
-            return res.status(401).json({ message:'senha invalida.'});
+            return res.status(400).json({ message:'senha invalida.'});
         }
         const token = jwt.sign(
             {

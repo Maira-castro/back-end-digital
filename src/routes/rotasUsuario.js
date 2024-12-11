@@ -3,8 +3,8 @@ const controllerUsuario = require('../controllers/controllerUsuario');
 const authenticate = require('../middleware/authMiddleware')
 const routerUsuario = express.Router();
 
-routerUsuario.post('/',controllerUsuario.CriarUsuario);
+routerUsuario.post('/',authenticate,controllerUsuario.CriarUsuario);
 routerUsuario.get('/:id',controllerUsuario.getUsuarioById);
-routerUsuario.put('/:id',controllerUsuario.updateUsuario);
-routerUsuario.delete('/:id',controllerUsuario.deleteUsuario);
+routerUsuario.put('/:id',authenticate,controllerUsuario.updateUsuario);
+routerUsuario.delete('/:id',authenticate,controllerUsuario.deleteUsuario);
 module.exports = routerUsuario; 
