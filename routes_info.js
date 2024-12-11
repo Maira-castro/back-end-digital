@@ -22,6 +22,23 @@
 	"confirmPassword":"senha123"
 }*/
 
+//rota: PESQUISAR USUARIO POR ID
+//metodo:GET 
+//URL:http://localhost:3000/v1/usuario/2
+
+//rota: ATUALIZAR USUARIO
+//metodo: PUT
+//URL:http://localhost:3000/v1/usuario/1
+/*ex. JSON:{
+  "firstname": "liz",
+  "surname": "Doe",
+  "email": "liz@example.com",
+}*/
+
+//rota: DELETAR USUARIO POR ID
+//metodo:DELETE 
+//URL:http://localhost:3000/v1/usuario/1
+
 //----------------categoria--------------------
 //rota: CADASTRAR CATEGORIA
 //metodo:POST 
