@@ -2,7 +2,7 @@
 // Authorization <seu_token/>
 
 
-//----------------usuario--------------------
+//----------------USUARIO--------------------
 //rota: LOGIN/TOKEN
 //metodo: POST
 //URL: http://localhost:3000/v1/user/token
@@ -39,7 +39,7 @@
 //metodo:DELETE 
 //URL:http://localhost:3000/v1/usuario/1
 
-//----------------categoria--------------------
+//----------------CATEGORIA--------------------
 //rota: CADASTRAR CATEGORIA
 //metodo:POST 
 //URL:http://localhost:3000/v1/categoria

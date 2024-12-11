@@ -25,5 +25,4 @@ const Categoria = sequelize.define('categoria',{
 
 });
 
-
 module.exports = Categoria;

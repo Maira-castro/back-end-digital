@@ -1,7 +1,7 @@
 const sequelize = require('../config/conexao');
 const { DataTypes } = require('sequelize');
-const Produtos = require('./tabelaProduto'); // Caminho correto
-const Categoria = require('./tabelaCategoria')
+const Produtos = require('./tabelaProduto'); 
+const Categoria = require('./tabelaCategoria');
 
 const CategoriaProduto = sequelize.define('categoriaProduto', {
     id: {
@@ -9,7 +9,7 @@ const CategoriaProduto = sequelize.define('categoriaProduto', {
         primaryKey: true,
         autoIncrement: true
     },
-    produtos_id: { // Nome da coluna no banco de dados
+    produtos_id: { 
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
@@ -18,7 +18,7 @@ const CategoriaProduto = sequelize.define('categoriaProduto', {
         },
         onDelete: 'CASCADE'
     },
-    categoria_id: { // Nome da coluna no banco de dados
+    categoria_id: { 
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
@@ -40,14 +40,13 @@ const CategoriaProduto = sequelize.define('categoriaProduto', {
         onUpdate: DataTypes.NOW
     }
 }, {
-    tableName: 'categoriaProduto' // Aqui você força o Sequelize a usar o nome correto da tabela
+    tableName: 'categoriaProduto' 
 });
-
 
 CategoriaProduto.belongsTo(Produtos, { as: 'produto', foreignKey: 'produtos_id' });
 Produtos.hasMany(CategoriaProduto, { as: 'categoriaProduto', foreignKey: 'produtos_id' });
 
 CategoriaProduto.belongsTo(Categoria, { as: 'categoria', foreignKey: 'categoria_id' });
 Categoria.hasMany(CategoriaProduto, { as: 'categoriaProduto', foreignKey: 'categoria_id' });
-sequelize.sync()
+
 module.exports = CategoriaProduto;

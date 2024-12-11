@@ -1,19 +1,60 @@
-const { Op } = require('sequelize'); 
-const tabelaProduto = require('../models/tabelaProduto'); 
+const { Op } = require('sequelize');
+const tabelaProduto = require('../models/tabelaProduto');
 const imagensProduto = require('../models/imagensProduto');
 const opcoesProduto = require('../models/opcoesProduto');
 const categoriaProduto = require('../models/categoriaProduto')
 const sequelize = require('../config/conexao');
 
+//PESQUISAR PRODUTO
 const getProduct = async (req, res) => {
     try {
         // Extrair parâmetros da query
         const { limit = 12, page = 1, fields, match, categorias_id, price_range, option = {} } = req.query;
 
-        // Verificar se 'limit' é um número e se é maior que 0
+        // Verificar se 'limit' é um número válido ou -1 (para sem limite)
         const queryLimit = parseInt(limit);
-        if (isNaN(queryLimit) || queryLimit <= 0) {
-            return res.status(400).json({ message: 'limit aceita apenas números maiores que 0' });
+        if (isNaN(queryLimit) || queryLimit < -1) {
+            return res.status(400).json({ message: 'O parâmetro "limit" deve ser um número maior ou igual a -1.' });
+        }
+
+        // Verificar se 'page' é um número válido
+        const queryPage = parseInt(page);
+        if (isNaN(queryPage) || queryPage <= 0) {
+            return res.status(400).json({ message: 'O parâmetro "page" deve ser um número maior que 0.' });
+        }
+
+        // Verificar se 'price_range' tem o formato correto (ex: "10-100")
+        if (price_range) {
+            const [minPrice, maxPrice] = price_range.split('-').map(price => parseFloat(price));
+            if (isNaN(minPrice) || isNaN(maxPrice) || minPrice > maxPrice) {
+                return res.status(400).json({ message: 'O parâmetro "price_range" deve estar no formato "minPrice-maxPrice" e os valores devem ser numéricos.' });
+            }
+        }
+
+        // Verificar se 'categorias_id' está no formato correto (ex: "1,2,3")
+        if (categorias_id) {
+            const categorias_idArray = categorias_id.split(',').map(id => parseInt(id.trim()));
+            if (categorias_idArray.some(id => isNaN(id))) {
+                return res.status(400).json({ message: 'O parâmetro "categorias_id" deve ser uma lista de números separados por vírgula.' });
+            }
+        }
+
+        // Verificar se 'match' é uma string
+        if (match && typeof match !== 'string') {
+            return res.status(400).json({ message: 'O parâmetro "match" deve ser uma string.' });
+        }
+
+        // Verificar se 'option' é um objeto com valores válidos
+        if (Object.keys(option).length > 0) {
+            for (const [key, value] of Object.entries(option)) {
+                if (typeof value !== 'string') {
+                    return res.status(400).json({ message: `O valor para a opção "${key}" deve ser uma string.` });
+                }
+                const valuesArray = value.split(',');
+                if (valuesArray.some(val => val.trim() === '')) {
+                    return res.status(400).json({ message: `O valor para a opção "${key}" não pode conter entradas vazias.` });
+                }
+            }
         }
 
         // Configurar opções para consulta
@@ -22,7 +63,7 @@ const getProduct = async (req, res) => {
                 {
                     model: categoriaProduto,
                     as: 'categoriaProduto',
-                    attributes: ['categoria_id'] // Trazer somente o 'categoria_id'
+                    attributes: ['categoria_id']
                 },
                 {
                     model: imagensProduto,  // Inclui a associação com a tabela de imagens
@@ -48,22 +89,22 @@ const getProduct = async (req, res) => {
         let where = {};
 
         if (queryLimit === -1) {
-            queryOptions.limit = null;  // Se o valor for -1, significa sem limite
+            delete queryOptions.limit;  // Remove o limite, retornando todos os produtos
         } else {
-            queryOptions.limit = queryLimit;
+            queryOptions.limit = queryLimit;  // Se o limit for diferente de -1, usa o valor fornecido
         }
 
         // Ajuste para o filtro de categorias_id
         if (categorias_id) {
             let categorias_idArray = [];
-        
+
             // Verifica se categorias_id é uma string ou um array
             if (typeof categorias_id === 'string') {
                 categorias_idArray = categorias_id.split(',').map(id => parseInt(id.trim())); // Converte os ids para números
             } else if (Array.isArray(categorias_id)) {
                 categorias_idArray = categorias_id.map(id => parseInt(id)); // Converte os ids para números
             }
-        
+
             // Filtro para garantir que o produto pertence a uma das categorias
             queryOptions.include[0].where = {
                 categoria_id: {
@@ -72,9 +113,14 @@ const getProduct = async (req, res) => {
             };
         }
 
-        // Calcular o offset com base na página
-        const queryOffset = queryLimit ? (parseInt(page) - 1) * queryLimit : 0;
+        // Calcular o offset apenas se limit for diferente de -1
+        // Calcular o offset apenas se limit for diferente de -1
+        let queryOffset = 0;
+        if (queryLimit !== -1) {
+            queryOffset = (parseInt(page) - 1) * queryLimit; // Página é ajustada
+        }
 
+        queryOptions.offset = queryOffset;  // Aplica o offset normalmente
         // Adicionar outros filtros como 'price_range', 'match', etc.
         if (price_range) {
             const [minPrice, maxPrice] = price_range.split('-').map(price => parseFloat(price));
@@ -146,7 +192,7 @@ const getProduct = async (req, res) => {
     }
 };
 
-
+//OBTER PRODUTO PELO ID
 const getProductID = async (req, res) => {
     try {
         const { id } = req.params;
@@ -156,7 +202,7 @@ const getProductID = async (req, res) => {
                 {
                     model: categoriaProduto,
                     as: 'categoriaProduto',
-                    attributes: ['categoria_id'] // Trazer somente o 'categoria_id'
+                    attributes: ['categoria_id']
                 },
                 {
                     model: opcoesProduto,
@@ -212,7 +258,7 @@ const getProductID = async (req, res) => {
 };
 
 
-//crio o produto e os relacionamentos funcionam
+//CRIAR PRODUTO
 const postProduct = async (req, res) => {
     const { enabled, name, slug, use_in_menu, stock, description, price, price_with_discount, categorias_id, images, options } = req.body;
     const obrigatorios = { name, slug, price, price_with_discount };
@@ -220,7 +266,7 @@ const postProduct = async (req, res) => {
     // Verifica campos obrigatórios
     const camposFaltando = Object.keys(obrigatorios).filter(key => !obrigatorios[key]);
     if (camposFaltando.length > 0) {
-        return res.status(500).json({ message: 'Campos obrigatórios não preenchidos' });
+        return res.status(400).json({ message: 'Campos obrigatórios não preenchidos' });
     }
     // Começando uma transação
     const t = await sequelize.transaction();
@@ -237,12 +283,11 @@ const postProduct = async (req, res) => {
             price,
             price_with_discount,
             categorias_id: JSON.stringify(categorias_id)
-            // categorias_id: categorias_id
-        } ,{ transaction: t } );
-        
+        }, { transaction: t });
+
         console.log('Produto criado com sucesso:', createProduto);
 
-           // Cria os produtos/categoria relacionados - testar 
+
         // Agora, associamos as categorias à tabela produto_categoria
         if (categorias_id && categorias_id.length > 0) {
             const categorias_idData = categorias_id.map(categoria => ({
@@ -252,6 +297,7 @@ const postProduct = async (req, res) => {
             await categoriaProduto.bulkCreate(categorias_idData, { transaction: t });
             console.log('Categorias associadas com sucesso:', categorias_idData);
         }
+
         // Cria as imagens relacionadas
         if (images && images.length > 0) {
             const imagensData = images.map(image => ({
@@ -259,7 +305,7 @@ const postProduct = async (req, res) => {
                 path: image.content,
                 enabled: true
             }));
-            await imagensProduto.bulkCreate(imagensData,{ transaction: t });
+            await imagensProduto.bulkCreate(imagensData, { transaction: t });
             console.log('Imagens criadas com sucesso:', imagensData);
         }
 
@@ -276,27 +322,22 @@ const postProduct = async (req, res) => {
             await opcoesProduto.bulkCreate(opcoesData, { transaction: t });
             console.log('Opções criadas com sucesso:', opcoesData);
         }
-         // Commit da transação
-         await t.commit();
+        // Commit da transação
+        await t.commit();
 
-        // return res.status(200).json({ res,message:'produto criado com sucesso'});
-        return res.status(200).json({ message: 'Produto criado com sucesso' });
-    }catch (error) {
+        return res.status(204).send();
+    } catch (error) {
         // Rollback da transação em caso de erro
         await t.rollback();
         console.error('Erro ao criar produto:', error);
-        return res.status(500).json({ message: 'Erro ao criar produto', error: error.message });
+        return res.status(400).json({ message: 'Erro ao criar produto', error: error.message });
     }
 };
 
+//ATUALIZAR PRODUTO
 const putProduct = async (req, res) => {
     const id = req.params.id;
     const { enabled, name, slug, use_in_menu, stock, description, price, price_with_discount, categorias_id, images, options } = req.body;
-
-    // Verifica se pelo menos um campo foi preenchido para atualização
-    if (!enabled && !name && !slug && !use_in_menu && !stock && !description && !price && !price_with_discount && !categorias_id && !images && !options) {
-        return res.status(400).json({ message: 'É necessário atualizar ao menos um item' });
-    }
 
     // Iniciando uma transação
     const t = await sequelize.transaction();
@@ -355,12 +396,12 @@ const putProduct = async (req, res) => {
             console.log('Produto atualizado com sucesso');
         } else {
             console.log('Nenhuma alteração encontrada no produto');
-            return res.status(200).json({ message: 'Nenhuma alteração encontrada no produto' });
+            return res.status(400).json({ message: 'Nenhuma alteração encontrada no produto' });
         }
 
         // Atualizar categorias
         if (categorias_id && categorias_id.length > 0) {
-            // Primeiro, deleta as categorias antigas associadas ao produto
+
             await categoriaProduto.destroy({ where: { produtos_id: id }, transaction: t });
 
             // Agora, insere as novas categorias
@@ -372,11 +413,11 @@ const putProduct = async (req, res) => {
             console.log('Categorias associadas com sucesso');
         }
 
-        
+
         if (images && images.length > 0) {
             await Promise.all(images.map(async (img) => {
                 if (img.id) {
-                    
+
                     await imagensProduto.update(
                         { enabled: img.deleted, path: img.content },
                         { where: { id: img.id }, transaction: t }
@@ -387,11 +428,11 @@ const putProduct = async (req, res) => {
             }));
         }
 
-        
+
         if (options && options.length > 0) {
             await Promise.all(options.map(async (opt) => {
                 if (opt.id) {
-                    
+
                     const radius = isNaN(opt.radius) ? 0 : opt.radius;
                     await opcoesProduto.update(
                         { title: opt.title, shape: opt.shape, radius, type: opt.type, values: JSON.stringify(opt.values || []) },
@@ -406,7 +447,7 @@ const putProduct = async (req, res) => {
         // Commit da transação
         await t.commit();
 
-        return res.status(200).json({ message: 'Produto atualizado com sucesso' });
+        return res.status(204).send();
 
     } catch (error) {
         // Rollback da transação em caso de erro
@@ -416,11 +457,7 @@ const putProduct = async (req, res) => {
     }
 };
 
-
-
-
-
-
+//DELETAR CATEGORIA
 const deleteProdutos = async (req, res) => {
     const id = req.params.id;
 
@@ -443,7 +480,7 @@ const deleteProdutos = async (req, res) => {
         }
 
         // Produto e suas associações foram deletados com sucesso
-        return res.status(200).json({ message: 'Produto e suas associações deletados com sucesso.' });
+        return res.status(204).send();
 
     } catch (error) {
         console.error('Erro ao excluir o produto:', error);

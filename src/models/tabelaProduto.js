@@ -1,5 +1,6 @@
-const sequelize = require('../config/conexao'); // Certifique-se de que o caminho esteja correto
+const sequelize = require('../config/conexao'); 
 const { DataTypes } = require('sequelize');
+
 const Produtos = sequelize.define('produtos', {
     id: {
         type: DataTypes.INTEGER,
@@ -27,7 +28,7 @@ const Produtos = sequelize.define('produtos', {
         allowNull: false
     },
     description: {
-        type: DataTypes.TEXT,
+        type: DataTypes.STRING,
         allowNull: false
     },
     price: {

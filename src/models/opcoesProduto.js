@@ -1,6 +1,6 @@
 const sequelize = require('../config/conexao');
 const { DataTypes } = require('sequelize');
-const Produtos = require('./tabelaProduto'); // Caminho correto
+const Produtos = require('./tabelaProduto'); 
 
 const OpcoesProduto = sequelize.define('opcoesProduto', {
     id: {
@@ -8,7 +8,7 @@ const OpcoesProduto = sequelize.define('opcoesProduto', {
         primaryKey: true,
         autoIncrement: true
     },
-    produtos_id: { // Nome da coluna no banco de dados
+    produtos_id: { 
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
@@ -49,9 +49,8 @@ const OpcoesProduto = sequelize.define('opcoesProduto', {
         onUpdate: DataTypes.NOW
     }
 }, {
-    tableName: 'opcoesProduto' // Aqui você força o Sequelize a usar o nome correto da tabela
+    tableName: 'opcoesProduto' 
 });
-
 
 OpcoesProduto.belongsTo(Produtos, { as: 'produto', foreignKey: 'produtos_id' });
 Produtos.hasMany(OpcoesProduto, { as: 'opcoesProduto', foreignKey: 'produtos_id' });

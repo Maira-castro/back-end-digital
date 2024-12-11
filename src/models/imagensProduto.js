@@ -1,6 +1,6 @@
-const sequelize = require('../config/conexao'); // Certifique-se de que o caminho esteja correto
+const sequelize = require('../config/conexao'); 
 const { DataTypes } = require('sequelize');
-const produto = require('./tabelaProduto'); // Certifique-se de que o caminho esteja correto
+const produto = require('./tabelaProduto'); 
 
 const ImagensProduto = sequelize.define('imagensProduto', {
     id: {
