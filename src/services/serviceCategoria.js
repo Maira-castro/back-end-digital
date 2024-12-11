@@ -32,8 +32,40 @@ const getCategoria = async ({ limit, page, fields, filters }) => {
     }
 };
 
+const getCategoriaById = async (id) => {
+    try {
+      const category = await Categoria.findByPk(id);  // findByPk busca por ID primário
+      return category;  // Retorna a categoria encontrada ou null
+    } catch (error) {
+      console.error('Erro ao buscar categoria no banco de dados:', error);
+      throw error;
+    }
+  };
 
-
+  const updateCategoria = async (id, { name, slug, use_in_menu }) => {
+    try {
+      // Busca a categoria pelo ID
+      const category = await Categoria.findByPk(id);
+  
+      // Verifica se a categoria existe
+      if (!category) {
+        throw new Error('Categoria não encontrada');
+      }
+  
+      // Atualiza os campos
+      category.name = name;
+      category.slug = slug;
+      category.use_in_menu = use_in_menu;
+  
+      // Salva as alterações no banco de dados
+      await category.save();
+  
+      return category; // Retorna a categoria atualizada
+    } catch (error) {
+      console.error('Erro ao atualizar categoria:', error);
+      throw new Error('Erro ao atualizar categoria: ' + error.message);
+    }
+  };
 
 const createCategoria = async ({ name, slug, use_in_menu}) => {
     try{
@@ -50,8 +82,29 @@ const createCategoria = async ({ name, slug, use_in_menu}) => {
     }
 };
 
+const deletarCategoria = async (id) => {
+    try {
+      const category = await Categoria.findByPk(id);
+  
+      if (!category) {
+        return null; // Retorna null se não encontrar a categoria
+      }
+  
+      // Deleta a categoria
+      await category.destroy();
+  
+      // Retorna uma mensagem de sucesso
+      return { message: 'Categoria deletada com sucesso' };
+    } catch (error) {
+      console.error('Erro ao deletar categoria:', error);
+      throw new Error('Erro ao deletar categoria: ' + error.message);
+    }
+};
 
 module.exports ={
     createCategoria,
     getCategoria,
+    getCategoriaById,
+    updateCategoria,
+    deletarCategoria,
 }

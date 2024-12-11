@@ -30,9 +30,27 @@
             "slug":"peixe",
             "use_in_menu": true
 }
+//rota: PESQUISAR CATEGORIA
+//metodo:GET 
+//URL:http://localhost:3000/v1/categoria/search?limit=2&page=1&fields=name,slug&use_in_menu=true
+/*SEUS PARAMETROS.
 
-
+//rota: PESQUISAR CATEGORIA POR ID
+//metodo:GET 
+//URL:http://localhost:3000/v1/categoria/1
 }*/
+
+//rota: ATUALIZAR CATEGORIA
+//metodo:PUT 
+//URL:http://localhost:3000/v1/categoria/1
+/* ex.JSON:(as informações que deseja atualizar)
+
+//rota: DELETAR CATEGORIA POR ID
+//metodo:DELETE 
+//URL:http://localhost:3000/v1/categoria/1
+}*/
+
+
 //----------------PRODUTO--------------------
 //rota:CADASTRAR PRODUTO
 //metodo: POST
